@@ -9,7 +9,7 @@
 ;*****************************************************************
 
 ; export symbols
-            XDEF Entry, _Startup            ; export 'Entry' symbol
+            XDEF Entry           ; export 'Entry' symbol
             ABSENTRY Entry        ; for absolute assembly: mark this as application entry point
 
 
@@ -23,81 +23,52 @@ ROMStart    EQU  $4000  ; absolute address to place my code/constant data
 
             ORG RAMStart
  ; Insert here your data definition.
-Counter     DS.W 1
-FiboRes     DS.W 1
-
-
+************************************************************
+* 5 Second Delay *
+************************************************************
+DT_DEMO EQU 115 ; 5 second delay
+  ORG $3850
+TOF_COUNTER RMB 1
+AT_DEMO RMB 1
 ; code section
-            ORG   ROMStart
-
-
-Entry:
-_Startup:
-   
+            ORG   $4000
+Entry LDS #$4000
+ JSR ENABLE_TOF ; Jump to TOF init
+ CLI
+ LDAA TOF_COUNTER
+ ADDA #DT_DEMO
+ STAA AT_DEMO
+CHK_DELAY LDAA TOF_COUNTER
+ CMPA AT_DEMO
+ BEQ STOP_HERE
+ NOP ; Do something during the display
+ BRA CHK_DELAY ; and check the alarm again
+STOP_HERE SWI
 ************************************************************
-* Motor Control *
+ENABLE_TOF LDAA #%10000000
+ STAA TSCR1 ; Enable TCNT
+ STAA TFLG2 ; Clear TOF
+ LDAA #%10000100 ; Enable TOI and select prescale factor equal to 16
+ STAA TSCR2
+ RTS
 ************************************************************
- BSET DDRA,%00000011
- BSET DDRT,%00110000
- JSR STARFWD
- JSR PORTFWD
- JSR STARON
- JSR PORTON
- JSR STARREV
- JSR PORTREV
- JSR STAROFF
- JSR PORTOFF
- BRA *
-STARON LDAA PTT
- ORAA #%00100000
- STAA PTT
+TOF_ISR INC TOF_COUNTER
+ LDAA #%10000000 ; Clear
+ STAA TFLG2 ; TOF
+ RTI
+************************************************************
+DISABLE_TOF LDAA #%00000100 ; Disable TOI and leave prescale factor at 16
+ STAA TSCR2
  RTS
- 
- 
-STAROFF LDAA PTT
- ANDA #%11011111
- STAA PTT
- RTS
- 
- 
-PORTON LDAA PTT
- ORAA  #%00010000
- STAA PTT
- RTS
+************************************************************
+* Interrupt Vectors *
+************************************************************
+ ORG $FFFE
+ DC.W Entry ; Reset Vector
+ ORG $FFDE
+ DC.W TOF_ISR ; Timer Overflow Interrupt Vector
 
 
-PORTOFF LDAA PTT
- ANDA  #%11101111
- STAA PTT
- RTS
 
 
-STARFWD LDAA PTT
- ANDA #%11111101
- STAA PORTA
- RTS
- 
- 
-STARREV LDAA PORTA
- ORAA #%00000010
- STAA PORTA
- RTS
- 
- 
-PORTFWD LDAA PORTA
- ANDA #%11111110
- STAA PORTA
- RTS
- 
- 
-PORTREV LDAA PORTA
- ORAA #%00000001
- STAA PTH
- RTS
 
-
-;**************************************************************
-;*                 Interrupt Vectors                          *
-;**************************************************************
-            ORG   $FFFE
-            DC.W  Entry           ; Reset Vector
