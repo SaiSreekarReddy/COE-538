@@ -17,24 +17,19 @@
 ; Include derivative-specific definitions 
 		INCLUDE 'derivative.inc' 
 
-   ; code
+; code
  org $4000
 ;starting the program
-  Entry:
-  _Startup:
-
-
-; assignment 7.1 part 2
-          BSET DDRP,%11111111 ; Configure Port P for output (LED2 cntrl)
-          BSET DDRE,%00010000 ; Configure pin PE4 for output (enable bit)
-          BCLR PORTE,%00010000 ; Enable keypad
-  Loop:   LDAA PTS ; Read a key code into AccA
-          LSRA ; Shift right AccA
-          LSRA ; -"-
-          LSRA ; -"-
-          LSRA ; -"-
-          STAA PTP ; Output AccA content to LED2
-          BRA Loop ; Loop 
+Entry:
+_Startup:
+                BSET DDRP,%11111111 ; Config. Port P for output
+                LDAA #%10000000 ; Prepare to drive PP7 high
+MainLoop        STAA PTP ; Drive PP7
+                LDX  #$1FFF ; Initialize the loop counter
+Delay           DEX ; Decrement the loop counter
+                BNE   Delay ; If not done, continue to loop
+                EORA  #%10000000 ; Toggle the MSB of AccA
+                BRA   MainLoop ; Go to MainLoop
 
 ;**************************************************************
 ;*                 Interrupt Vectors                          *
